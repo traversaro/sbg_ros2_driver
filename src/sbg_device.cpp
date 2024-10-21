@@ -161,28 +161,33 @@ void SbgDevice::connect()
   if (error_code == SBG_TIME_OUT && config_store_.isInterfaceSerial())
   {
     // readDeviceInfo() not successful - error could be that the baudrate configured on the device
-    // is different from the one configured in the config file. Re-try with different baudrate
+    // is different from the one configured in the config file. Retry with different baudrate
     error_code = findCurrentDeviceBaudrate();
-  }
 
-  if (error_code == SBG_NO_ERROR)
-  {
-    setDeviceBaudrate();
+    if (error_code == SBG_NO_ERROR && config_store_.checkConfigWithRos())
+    {
+      setDeviceBaudrate();
+    }
   }
 }
 
 SbgErrorCode SbgDevice::findCurrentDeviceBaudrate()
 {
-  SbgErrorCode error_code;
-  error_code = SBG_ERROR;
-  static constexpr uint32_t kBaudRates[8] = {115200, 921600, 460800, 230400, 38400, 19200, 9600, 4800};
+  SbgErrorCode         error_code = SBG_ERROR;
+  std::vector<int64_t> baudrates  = config_store_.getFallbackBaudRates();
 
-  for (const auto br : kBaudRates)
+  for (const auto br : baudrates)
   {
-    RCLCPP_INFO(ref_node_.get_logger(), "Not successful with %d bps, trying with %d bps instead", config_store_.getBaudRate(), br);
+    RCLCPP_INFO(ref_node_.get_logger(), "Not successful with %d bps, trying with %" PRIi64 "bps instead", config_store_.getBaudRate(), br);
+
+    // Baudrate should be an uint32 but rclcpp only support int64 vectors
+    if (br < 0 || br > UINT32_MAX)
+    {
+      continue;
+    }
 
     sbgEComClose(&com_handle_);
-    sbgInterfaceSerialDestroy(&sbg_interface_);
+    sbgInterfaceDestroy(&sbg_interface_);
 
     error_code = sbgInterfaceSerialCreate(&sbg_interface_, config_store_.getUartPortName().c_str(), br);
 
@@ -200,36 +205,45 @@ SbgErrorCode SbgDevice::findCurrentDeviceBaudrate()
 
     error_code = readDeviceInfo();
 
-    if (error_code == SBG_NO_ERROR) {
+    if (error_code == SBG_NO_ERROR)
+    {
       // current device baud rate found
-      return SBG_NO_ERROR;
+      break;
     }
   }
+
   return error_code;
 }
 
 void SbgDevice::setDeviceBaudrate()
 {
-  SbgErrorCode error_code;
+  SbgErrorCode         error_code;
   SbgEComInterfaceConf com_conf;
+
   error_code = sbgEComCmdInterfaceGetUartConf(&com_handle_, SBG_ECOM_IF_COM_A, &com_conf);
-  if (error_code != SBG_NO_ERROR) {
+
+  if (error_code != SBG_NO_ERROR)
+  {
     rclcpp::exceptions::throw_from_rcl_error(RCL_RET_ERROR, "SBG_DRIVER - [Reconfig] Unable to get config of device - " + std::string(sbgErrorCodeToString(error_code)));
   }
 
   com_conf.baudRate = config_store_.getBaudRate();
-  error_code = sbgEComCmdInterfaceSetUartConf(&com_handle_, SBG_ECOM_IF_COM_A, &com_conf);
-  if (error_code != SBG_NO_ERROR) {
+  error_code        = sbgEComCmdInterfaceSetUartConf(&com_handle_, SBG_ECOM_IF_COM_A, &com_conf);
+
+  if (error_code != SBG_NO_ERROR)
+  {
     rclcpp::exceptions::throw_from_rcl_error(RCL_RET_ERROR, "SBG_DRIVER - [Reconfig] Unable to set new baudrate of device - " + std::string(sbgErrorCodeToString(error_code)));
   }
 
   error_code = sbgEComCmdSettingsAction(&com_handle_, SBG_ECOM_SAVE_SETTINGS);
-  if (error_code != SBG_NO_ERROR) {
+
+  if (error_code != SBG_NO_ERROR)
+  {
     rclcpp::exceptions::throw_from_rcl_error(RCL_RET_ERROR, "SBG_DRIVER - [Reconfig] Unable to save settings on device - " + std::string(sbgErrorCodeToString(error_code)));
   }
 
   sbgEComClose(&com_handle_);
-  sbgInterfaceSerialDestroy(&sbg_interface_);
+  sbgInterfaceDestroy(&sbg_interface_);
 
   error_code = sbgInterfaceSerialCreate(&sbg_interface_, config_store_.getUartPortName().c_str(), config_store_.getBaudRate());
 
@@ -244,13 +258,14 @@ void SbgDevice::setDeviceBaudrate()
   {
     rclcpp::exceptions::throw_from_rcl_error(RCL_RET_ERROR, "SBG_DRIVER - [Init] Unable to initialize the SbgECom protocol - " + std::string(sbgErrorCodeToString(error_code)));
   }
+
   RCLCPP_INFO(ref_node_.get_logger(), "SBG_DRIVER - successfully reconfigured baudrate to %d", config_store_.getBaudRate());
 }
 
 SbgErrorCode SbgDevice::readDeviceInfo()
 {
   SbgEComDeviceInfo device_info;
-  SbgErrorCode error_code;
+  SbgErrorCode      error_code;
 
   error_code = sbgEComCmdGetInfo(&com_handle_, &device_info);
 
@@ -264,7 +279,6 @@ SbgErrorCode SbgDevice::readDeviceInfo()
 
     RCLCPP_INFO(ref_node_.get_logger(), "SBG_DRIVER - hardwareRev = %s", getVersionAsString(device_info.hardwareRev).c_str());
     RCLCPP_INFO(ref_node_.get_logger(), "SBG_DRIVER - firmwareRev = %s", getVersionAsString(device_info.firmwareRev).c_str());
-    return SBG_NO_ERROR;
   }
   else
   {

@@ -125,16 +125,15 @@ private:
   /*!
    * Read the device informations.
    *
-   * \throw                       Unable to read the device information.
    * \return                      SBG_NO_ERROR if reading device info succeeded.
    */
   SbgErrorCode readDeviceInfo();
 
   /*!
-   * Find the baudrate currently configured on the device. Leaves the ECOM interface in an initialized state.
+   * Find the baudrate currently configured on the device.
    *
-   * \return                                 SBG_NO_ERROR if the current device baudrate was found.
-   * \throw                                  Unable to read the device information.
+   * \return                      SBG_NO_ERROR if the current device baudrate was found.
+   * \throw                       Unable to read the device information.
    */
   SbgErrorCode findCurrentDeviceBaudrate();
 

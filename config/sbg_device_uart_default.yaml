@@ -12,7 +12,7 @@
 
     odometry:
       # Enable ROS odometry messages.
-      enable: false
+      enable: true
       # Publish odometry transforms.
       publishTf: true
       # Odometry frame IDs.
@@ -22,22 +22,27 @@
 
     # Configuration of the device with ROS.
     confWithRos: false
+
+    # File configuration to replay INS data
+    # can be configured by command line as defined in README
+    fileConf:
+      path: 'sbg_raw_data.dat'
+
+    # # Uart configuration
+    # uartConf:
+    #   # Port Name
+    #   portName: "/dev/ttyUSB0"
     
-    # Uart configuration
-    uartConf:
-      # Port Name
-      portName: "/dev/ttyUSB0"
+    #   # Baude rate (4800 ,9600 ,19200 ,38400 ,115200 [default],230400 ,460800 ,921600)
+    #   baudRate: 921600
     
-      # Baude rate (4800 ,9600 ,19200 ,38400 ,115200 [default],230400 ,460800 ,921600)
-      baudRate: 115200
-    
-      # Port Id
-      # 0 PORT_A: Main communication interface. Full duplex.
-      # 1 PORT_B: Auxiliary input interface for RTCM
-      # 2 PORT_C: Auxiliary communication interface. Full duplex.
-      # 3 PORT_D: Auxiliary input interface
-      # 4 PORT_E: Auxiliary input/output interface
-      portID: 0
+    #   # Port Id
+    #   # 0 PORT_A: Main communication interface. Full duplex.
+    #   # 1 PORT_B: Auxiliary input interface for RTCM
+    #   # 2 PORT_C: Auxiliary communication interface. Full duplex.
+    #   # 3 PORT_D: Auxiliary input interface
+    #   # 4 PORT_E: Auxiliary input/output interface
+    #   portID: 0
     
     # Sensor Parameters
     sensorParameters:
@@ -251,19 +256,19 @@
 
       # Ros standard output:
       # Note: If true publish ROS standard messages.
-      ros_standard: false
+      ros_standard: true
 
       # Frame convention:
       # Note: If true messages are expressed in the ENU convention.
       #
       # true : ENU convention (X east, Y north, Z up)
       # false (default): NED convention (X north, Y east, Z down)
-      use_enu: false
+      use_enu: true
 
       # Frame ID:
       # Note: If the frame convention is NED so the default frame ID is (imu_link_ned)
       #       else if the convention is ENU so the default frame ID is (imu_link)
-      frame_id: "imu_link_ned"
+      frame_id: "imu_link"
     
       # Status general, clock, com aiding, solution, heave
       log_status: 200
@@ -311,11 +316,11 @@
 
     rtcm:
       # Should ros driver subscribe to RTCM topic
-      subscribe: false
+      subscribe: true
       # Topic on which RTCM is published
       topic_name: rtcm
       # Namespace where topic is published
-      namespace: ntrip_client
+      namespace: ""
 
     nmea:
       # Should ros driver publish NMEA string

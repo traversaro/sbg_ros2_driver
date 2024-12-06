@@ -51,7 +51,8 @@ std::map<SbgEComMagCalibBandwidth, std::string> SbgDevice::g_mag_calib_bandwidth
 SbgDevice::SbgDevice(rclcpp::Node& ref_node_handle):
 ref_node_(ref_node_handle),
 mag_calibration_ongoing_(false),
-mag_calibration_done_(false)
+mag_calibration_done_(false),
+log_replay_last_timestamp_(0)
 {
   loadParameters();
   connect();
@@ -97,6 +98,28 @@ SbgErrorCode SbgDevice::onLogReceivedCallback(SbgEComHandle* p_handle, SbgEComCl
 void SbgDevice::onLogReceived(SbgEComClass msg_class, SbgEComMsgId msg, const SbgEComLogUnion& ref_sbg_data)
 {
   //
+  // If Sbg driver is reading from file
+  //
+  if (config_store_.isInterfaceFile())
+  {
+    uint32_t time_to_sleep = 0;
+
+    //
+    // GPS Raw logs don't contain timestamp as the other structures
+    //
+    if ((ref_sbg_data.timeStamp > log_replay_last_timestamp_) && (msg != SBG_ECOM_LOG_GPS1_RAW) && (msg != SBG_ECOM_LOG_GPS2_RAW))
+    {
+      if (log_replay_last_timestamp_ != 0)
+      {
+        time_to_sleep = ref_sbg_data.timeStamp - log_replay_last_timestamp_;
+      }
+      log_replay_last_timestamp_ = ref_sbg_data.timeStamp;
+    }
+
+    usleep(time_to_sleep);
+  }
+
+  //
   // Publish the received SBG log.
   //
   message_publisher_.publish(msg_class, msg, ref_sbg_data);
@@ -133,6 +156,10 @@ void SbgDevice::connect()
     RCLCPP_INFO(ref_node_.get_logger(), "SBG_DRIVER - UDP interface %s %d->%d", ip, config_store_.getInputPortAddress(), config_store_.getOutputPortAddress());
     error_code = sbgInterfaceUdpCreate(&sbg_interface_, config_store_.getIpAddress(), config_store_.getInputPortAddress(), config_store_.getOutputPortAddress());
   }
+  else if (config_store_.isInterfaceFile())
+  {
+    error_code = sbgInterfaceFileOpen(&sbg_interface_, config_store_.getFile().c_str());
+  }
   else
   {
     rclcpp::exceptions::throw_from_rcl_error(RCL_RET_ERROR, "Invalid interface type for the SBG device.");
@@ -150,7 +177,10 @@ void SbgDevice::connect()
     rclcpp::exceptions::throw_from_rcl_error(RCL_RET_ERROR, "SBG_DRIVER - [Init] Unable to initialize the SbgECom protocol - " + std::string(sbgErrorCodeToString(error_code)));
   }
 
-  readDeviceInfo();
+  if (!config_store_.isInterfaceFile())
+  {
+    readDeviceInfo();
+  }
 }
 
 void SbgDevice::readDeviceInfo()

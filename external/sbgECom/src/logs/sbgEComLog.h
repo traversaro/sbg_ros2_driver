@@ -78,6 +78,9 @@ extern "C" {
  */
 typedef union _SbgEComLogUnion
 {
+	struct {
+		uint32_t timeStamp;
+	};
 	SbgEComLogStatus				statusData;			/*!< Stores data for the SBG_ECOM_LOG_STATUS message. */
 	SbgEComLogImuLegacy				imuData;			/*!< Stores data for the SBG_ECOM_LOG_IMU_DATA message. */
 	SbgEComLogImuShort				imuShort;			/*!< Stores data for the SBG_ECOM_LOG_IMU_SHORT message. */

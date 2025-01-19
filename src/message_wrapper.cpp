@@ -16,6 +16,10 @@
 
 using sbg::MessageWrapper;
 
+#ifndef M_SQRT2
+#define M_SQRT2	1.41421356237309504880	/* sqrt(2) */
+#endif
+
 /*!
  * Class to wrap the SBG logs into ROS messages.
  */
